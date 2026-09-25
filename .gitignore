@@ -1,0 +1,22 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# 夫婦2人のFirebase uidを入れた、コンソールに貼る用のルール
+firestore.rules.local.txt
+
+# 元画像（加工前）。加工後の public/img だけを公開する
+art-src
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
