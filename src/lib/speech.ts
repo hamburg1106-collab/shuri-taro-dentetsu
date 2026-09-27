@@ -3,6 +3,8 @@
  * iPhoneは、ボタンを押した流れの中で1回しゃべらせないと、その後も鳴らないことがある。
  * そのため「出発進行！」を押したときに unlock() を呼ぶ。
  */
+import { duck, unlockAudio } from './music'
+
 const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined
 
 let voice: SpeechSynthesisVoice | undefined
@@ -25,10 +27,18 @@ export const speak = (text: string) => {
   u.lang = 'ja-JP'
   if (voice) u.voice = voice
   u.rate = 1.05
+  // しゃべっているあいだはBGMを小さくする
+  u.onstart = () => duck(true)
+  u.onend = () => duck(false)
+  u.onerror = () => duck(false)
   synth.speak(u)
 }
 
-export const unlockSpeech = () => speak('出発進行！')
+/** 「出発進行！」などのボタンから呼ぶ。読み上げと音楽の両方を、スマホで鳴らせる状態にする */
+export const unlockSpeech = () => {
+  unlockAudio()
+  speak('出発進行！')
+}
 
 /** 運動中に画面が消えないようにする（対応している端末だけ） */
 export const keepAwake = async (): Promise<() => void> => {

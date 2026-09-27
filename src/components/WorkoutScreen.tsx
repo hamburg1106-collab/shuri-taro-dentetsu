@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { READY_SEC, REST_SEC, WORK_SEC } from '../config'
 import type { PoseName } from '../data/poses'
+import { beep, fanfare, go, isMusicEnabled, playMusic, setMusicEnabled, stopMusic } from '../lib/music'
 import { keepAwake, setSpeechEnabled, speak } from '../lib/speech'
+
+/** 休憩・準備の残り何秒から「ピッ」と鳴らすか */
+const COUNTDOWN_SEC = 5
 import { StickFigure } from './parts'
 
 export type WorkItem = { name: string; point: string; poses: PoseName[]; switchSides?: boolean }
@@ -30,6 +34,7 @@ export const WorkoutScreen = ({ items, onFinish, onQuit }: Props) => {
   const [pausedLeft, setPausedLeft] = useState<number | null>(null)
   const [now, setNow] = useState(Date.now())
   const [voiceOn, setVoiceOn] = useState(true)
+  const [musicOn, setMusicOn] = useState(isMusicEnabled)
   const said = useRef<Set<string>>(new Set())
   const finished = useRef(false)
 
@@ -50,32 +55,42 @@ export const WorkoutScreen = ({ items, onFinish, onQuit }: Props) => {
     return () => clearInterval(t)
   }, [pausedLeft])
 
-  const sayOnce = (key: string, text: string) => {
+  /** 同じきっかけで2回鳴らさない（画面は0.2秒ごとに描き直すため） */
+  const once = (key: string, fn: () => void) => {
     if (said.current.has(key)) return
     said.current.add(key)
-    speak(text)
+    fn()
   }
+  const sayOnce = (key: string, text: string) => once(key, () => speak(text))
 
-  // フェーズの切り替えと読み上げ
+  useEffect(() => () => stopMusic(), [])
+
+  // フェーズの切り替え、音楽、読み上げ、カウントダウン
   useEffect(() => {
     if (pausedLeft !== null) return
+    playMusic(phase.kind === 'work' ? 'work' : 'rest')
     if (phase.kind === 'ready') sayOnce(`ready`, `1種目めは、${item.name}。準備して`)
     if (phase.kind === 'work') {
       sayOnce(`w${idx}`, `${item.name}、スタート！`)
       if (item.switchSides && left === WORK_SEC / 2) sayOnce(`s${idx}`, '反対側！')
+      if (left === 3) sayOnce(`c${idx}`, 'あと3秒！')
     }
     if (phase.kind === 'rest') sayOnce(`r${idx}`, `休憩。次は、${item.name}`)
-    if (left === 3 && phase.kind !== 'ready') sayOnce(`c${idx}`, phase.kind === 'work' ? 'あと3秒！' : 'もうすぐ始まるよ')
+    // 休憩・準備の残り5秒から「ピッ」
+    if (phase.kind !== 'work' && left >= 1 && left <= COUNTDOWN_SEC) once(`b${idx}-${left}`, beep)
 
     if (leftMs > 0) return
     if (idx === phases.length - 1) {
       if (finished.current) return
       finished.current = true
-      speak('おつかれさま！サイコロを振ろう！')
+      stopMusic()
+      fanfare()
+      speak('おつかれさま！')
       onFinish()
       return
     }
     const next = idx + 1
+    if (phases[next].kind === 'work') go()
     setIdx(next)
     setEndAt(Date.now() + phases[next].sec * 1000)
   }, [now, idx, pausedLeft])
@@ -84,6 +99,7 @@ export const WorkoutScreen = ({ items, onFinish, onQuit }: Props) => {
     if (pausedLeft === null) {
       setPausedLeft(Math.max(0, endAt - Date.now()))
       speechSynthesis?.cancel()
+      stopMusic()
     } else {
       setEndAt(Date.now() + pausedLeft)
       setPausedLeft(null)
@@ -97,9 +113,17 @@ export const WorkoutScreen = ({ items, onFinish, onQuit }: Props) => {
     })
   }
 
+  const toggleMusic = () => {
+    const on = !musicOn
+    setMusicOn(on)
+    setMusicEnabled(on)
+    if (on && pausedLeft === null) playMusic(phase.kind === 'work' ? 'work' : 'rest')
+  }
+
   const quit = () => {
     if (confirm('運行をやめますか？（途中でやめると、サイコロは振れません）')) {
       speechSynthesis?.cancel()
+      stopMusic()
       onQuit()
     }
   }
@@ -114,9 +138,14 @@ export const WorkoutScreen = ({ items, onFinish, onQuit }: Props) => {
           <span>
             運行状況　{Math.min(phase.i + 1, items.length)} / {items.length} 駅
           </span>
-          <button className="link-btn" style={{ minHeight: 0, padding: 0, fontSize: 12 }} onClick={toggleVoice}>
-            音声 {voiceOn ? 'ON' : 'OFF'}
-          </button>
+          <span style={{ display: 'flex', gap: 12 }}>
+            <button className="link-btn" style={{ minHeight: 0, padding: 0, fontSize: 12 }} onClick={toggleMusic}>
+              音楽 {musicOn ? 'ON' : 'OFF'}
+            </button>
+            <button className="link-btn" style={{ minHeight: 0, padding: 0, fontSize: 12 }} onClick={toggleVoice}>
+              音声 {voiceOn ? 'ON' : 'OFF'}
+            </button>
+          </span>
         </div>
         <svg viewBox="0 0 340 30" style={{ width: '100%' }} aria-hidden>
           <line x1="20" y1="15" x2="320" y2="15" stroke="#1e2230" strokeWidth="9" strokeLinecap="round" />

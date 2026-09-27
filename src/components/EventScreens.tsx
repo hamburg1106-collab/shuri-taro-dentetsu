@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CHALLENGE_BY_ID } from '../data/exercises'
 import { MAP_LENGTH, MAPS } from '../data/maps'
+import { beep, fanfare, go, playMusic, stopMusic } from '../lib/music'
 import { keepAwake, speak } from '../lib/speech'
 import { completeChallenge } from '../lib/store'
 import type { AdvanceResult, MainDoc, RewardKind } from '../types'
@@ -133,22 +134,40 @@ export const ChallengeRunScreen = ({ uid, result, onDone, onQuit }: { uid: strin
   const left = Math.max(0, Math.ceil((endAt - now) / 1000))
   const started = left <= c.seconds
 
+  const fired = useRef<Set<string>>(new Set())
+  const once = (key: string, fn: () => void) => {
+    if (fired.current.has(key)) return
+    fired.current.add(key)
+    fn()
+  }
+
   useEffect(() => {
     let release = () => {}
     void keepAwake().then((r) => (release = r))
     speak(`${c.name}。3秒後にスタート`)
+    playMusic('rest')
     const t = setInterval(() => setNow(Date.now()), 200)
     return () => {
       clearInterval(t)
       release()
+      stopMusic()
     }
   }, [c.name])
 
   useEffect(() => {
-    if (left === c.seconds) speak('スタート！')
-    if (left === 3 && started) speak('あと3秒！')
+    // スタート前の3秒は「ピッ」、始まりで「ポーン」
+    if (!started && left > c.seconds) once(`b${left}`, beep)
+    if (left === c.seconds && left > 0)
+      once('start', () => {
+        go()
+        playMusic('work')
+        speak('スタート！')
+      })
+    if (left === 3 && started) once('c3', () => speak('あと3秒！'))
     if (left === 0 && !sent.current) {
       sent.current = true
+      stopMusic()
+      fanfare()
       speak('チャレンジ成功！')
       completeChallenge(uid).then(onDone, (e) => setError(e instanceof Error ? e.message : String(e)))
     }
