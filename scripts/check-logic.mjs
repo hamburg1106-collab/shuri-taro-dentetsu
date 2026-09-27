@@ -31,6 +31,16 @@ try {
     assert.deepEqual(menu.menuOf(key).map((e) => e.id), m.map((e) => e.id), '同じ日なら同じメニュー')
   }
   console.log('✓ メニュー（60日分: 5種目・重複なし・毎回同じ）')
+  let differ = 0
+  for (let i = 0; i < 28; i++) {
+    const key = date.addDays('2026-09-25', i)
+    const a = menu.menuOf(key, 1).map((e) => e.id)
+    const b = menu.menuOf(key, 2)
+    assert.equal(b.length, 5, `${key} の2本目も5種目`)
+    if (b.some((e) => !a.includes(e.id))) differ++
+  }
+  assert.ok(differ >= 20, `2本目は1本目と違う種目が出る日が多い（${differ}/28日）`)
+  console.log(`✓ 2本目のメニュー（28日中${differ}日で1本目と違う種目）`)
   console.log('  9/25（金）:', menu.menuOf('2026-09-25').map((e) => e.name).join(' / '))
 
   // ---- 種目とポーズ ----

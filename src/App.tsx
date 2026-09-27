@@ -1,6 +1,6 @@
 import type { User } from 'firebase/auth'
 import { useEffect, useMemo, useState } from 'react'
-import { ArriveScreen, ChallengeRunScreen, ChallengeScreen, GoalScreen, RewardScreen } from './components/EventScreens'
+import { ArriveScreen, ChallengeRunScreen, ChallengeScreen, GoalScreen, RewardScreen, WellDoneScreen } from './components/EventScreens'
 import { DiceScreen } from './components/DiceScreen'
 import { HomeScreen } from './components/HomeScreen'
 import { LoginGate } from './components/LoginGate'
@@ -19,13 +19,14 @@ import { menuOf } from './lib/menu'
 import { unlockSpeech } from './lib/speech'
 import { completeWorkout, markMvpSeen, watchDays, watchMain, watchWeights } from './lib/store'
 import { holdUpdate } from './lib/swUpdate'
-import { EMPTY_DAY, type AdvanceResult, type DayDoc, type MainDoc, type Weight } from './types'
+import { EMPTY_DAY, sessionsOf, type AdvanceResult, type DayDoc, type MainDoc, type Weight } from './types'
 
 type Screen =
   | { name: 'home' }
   | { name: 'menu' }
   | { name: 'workout' }
   | { name: 'dice' }
+  | { name: 'wellDone'; session: number }
   | { name: 'arrive'; result: AdvanceResult }
   | { name: 'reward'; result: AdvanceResult }
   | { name: 'challenge'; result: AdvanceResult }
@@ -86,7 +87,9 @@ const Signed = ({ user }: { user: User }) => {
 
   const me = main?.members[uid]
   const levels = me?.levels ?? {}
-  const menu = useMemo(() => menuOf(todayKey), [todayKey])
+  // 今日の何本目か。運動中に相手の記録が届いても変わらないよう、自分の回数だけで決める
+  const round = sessionsOf(days[todayKey] ?? EMPTY_DAY, uid) + 1
+  const menu = useMemo(() => menuOf(todayKey, round), [todayKey, round])
   const items: WorkItem[] = useMemo(
     () => menu.map((ex) => ({ ...resolve(ex, levels[ex.id] ?? 'normal'), switchSides: ex.switchSides })),
     [menu, levels],
@@ -135,9 +138,8 @@ const Signed = ({ user }: { user: User }) => {
 
   const finishWorkout = async () => {
     try {
-      const dice = await completeWorkout(uid)
-      setScreen(dice ? { name: 'dice' } : { name: 'home' })
-      if (!dice) setError('今日の分はもう記録されていました')
+      const { dice, session } = await completeWorkout(uid)
+      setScreen(dice ? { name: 'dice' } : { name: 'wellDone', session })
     } catch (e) {
       setError(`記録できませんでした（${e instanceof Error ? e.message : String(e)}）。電波のよいところで開き直してください`)
       home()
@@ -167,6 +169,7 @@ const Signed = ({ user }: { user: User }) => {
           <MenuScreen
             uid={uid}
             todayKey={todayKey}
+            round={round}
             menu={menu}
             levels={levels}
             onBack={home}
@@ -180,6 +183,8 @@ const Signed = ({ user }: { user: User }) => {
         return <WorkoutScreen items={items} onFinish={() => void finishWorkout()} onQuit={home} />
       case 'dice':
         return <DiceScreen uid={uid} main={main} onMoved={afterMove} onBack={home} />
+      case 'wellDone':
+        return <WellDoneScreen session={screen.session} onOk={home} />
       case 'arrive':
         return <ArriveScreen main={main} result={screen.result} onOk={home} />
       case 'reward':

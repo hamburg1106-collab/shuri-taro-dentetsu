@@ -28,6 +28,8 @@ export type DayDoc = {
   /** 終えた順。2人目の判定に使う */
   order: string[]
   challenges: Record<string, number>
+  /** その日に運動した回数。2本目からはサイコロなし */
+  sessions: Record<string, number>
 }
 
 export type Weight = { uid: string; date: string; kg: number }
@@ -59,4 +61,7 @@ export const EMPTY_MAIN: MainDoc = {
   mvpSeen: {},
 }
 
-export const EMPTY_DAY: DayDoc = { done: {}, order: [], challenges: {} }
+export const EMPTY_DAY: DayDoc = { done: {}, order: [], challenges: {}, sessions: {} }
+
+/** その日に運動した回数（sessions を持つ前の記録は、done があれば1回と数える） */
+export const sessionsOf = (day: DayDoc, uid: string): number => day.sessions[uid] ?? (day.done[uid] ? 1 : 0)

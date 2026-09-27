@@ -2,7 +2,7 @@ import { ROLE_NAME, type Role } from '../config'
 import { MAP_LENGTH, MAPS } from '../data/maps'
 import { label } from '../lib/date'
 import { themeOf } from '../lib/menu'
-import type { DayDoc, MainDoc } from '../types'
+import { sessionsOf, type DayDoc, type MainDoc } from '../types'
 import { MapView } from './MapView'
 import { Logo } from './parts'
 
@@ -42,6 +42,7 @@ export const HomeScreen = ({ uid, main, today, todayKey, onStart, onDice, onGoal
   const row = (role: Role) => {
     const u = uidOf(main, role)
     const done = !!(u && today.done[u])
+    const n = u ? sessionsOf(today, u) : 0
     return (
       <div className="today__row" key={role}>
         <span className={`avatar avatar--${role}`}>{role === 'danna' ? 'だ' : 'お'}</span>
@@ -49,7 +50,7 @@ export const HomeScreen = ({ uid, main, today, todayKey, onStart, onDice, onGoal
           {ROLE_NAME[role]}
           {u === uid && <span className="muted">（あなた）</span>}
         </span>
-        {!u ? <span className="muted">まだ未登録</span> : done ? <span className="ok">✓ 完了</span> : <span className="muted">まだ</span>}
+        {!u ? <span className="muted">まだ未登録</span> : done ? <span className="ok">✓ 完了{n > 1 && `（${n}本）`}</span> : <span className="muted">まだ</span>}
       </div>
     )
   }
@@ -104,9 +105,9 @@ export const HomeScreen = ({ uid, main, today, todayKey, onStart, onDice, onGoal
           <span className="btn__sub">振ったサイコロが {pending.dice.length}個 あります</span>
         </button>
       ) : iDone ? (
-        <button className="btn btn--navy" disabled>
-          今日の運行は終了
-          <span className="btn__sub">また明日！</span>
+        <button className="btn btn--navy" onClick={onStart}>
+          もう1本やる
+          <span className="btn__sub">サイコロは1日1回。運動は何本でもOK</span>
         </button>
       ) : (
         <button className="btn" onClick={onStart}>

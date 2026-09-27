@@ -40,6 +40,28 @@ export const ArriveScreen = ({ main, result, onOk }: { main: MainDoc; result: Ad
   </div>
 )
 
+/** 2本目以降を終えたとき（サイコロなし） */
+export const WellDoneScreen = ({ session, onOk }: { session: number; onOk: () => void }) => (
+  <div className="screen sea screen--center">
+    <h1 className="title3d" style={{ fontSize: 38, marginTop: 40 }}>
+      おつかれさま！
+    </h1>
+    <div className="big-num" style={{ fontSize: 72 }}>
+      {session}
+      <span style={{ fontSize: 28 }}>本目</span>
+    </div>
+    <Talk>
+      今日は {session}本目 の運行、完走！
+      <br />
+      サイコロは1日1回だけど、運動はやったぶんだけ体に効くよ
+    </Talk>
+    <div className="grow" />
+    <button className="btn" onClick={onOk}>
+      マップへ
+    </button>
+  </div>
+)
+
 /** ご褒美マス：しゅりまるが跳ねて登場 */
 export const RewardScreen = ({ result, onOk }: { result: AdvanceResult; onOk: () => void }) => {
   const r = REWARD_TEXT[result.reward ?? 'reroll']

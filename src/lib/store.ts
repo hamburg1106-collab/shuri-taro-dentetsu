@@ -14,7 +14,7 @@ import {
 import type { Role } from '../config'
 import type { Level } from '../data/exercises'
 import { MAP_LENGTH, MAPS } from '../data/maps'
-import { EMPTY_DAY, EMPTY_MAIN, type AdvanceResult, type DayDoc, type MainDoc, type Weight } from '../types'
+import { EMPTY_DAY, EMPTY_MAIN, sessionsOf, type AdvanceResult, type DayDoc, type MainDoc, type Weight } from '../types'
 import { dateKey } from './date'
 import { db } from './firebase'
 import { advance, diceForCompletion, mergePending, nextMapIndex } from './game'
@@ -42,6 +42,7 @@ const toDay = (data: Partial<DayDoc> | undefined): DayDoc => ({
   done: data?.done ?? {},
   order: data?.order ?? [],
   challenges: data?.challenges ?? {},
+  sessions: data?.sessions ?? {},
 })
 
 export const watchMain = (onChange: (m: MainDoc) => void, onError: (e: Error) => void) =>
@@ -84,24 +85,31 @@ export const setLevel = (uid: string, exerciseId: string, level: Level) =>
 
 // ---- 運動を終えた ----
 
-/** 運動を終えたことを記録し、サイコロを振る。すでに今日やっていれば null */
-export const completeWorkout = async (uid: string): Promise<number[] | null> => {
+/**
+ * 運動を終えたことを記録する。その日1本目ならサイコロを振る。
+ * 2本目からはサイコロなしで、回数だけ数える（1日に何回でもできる。2026-09-27 決定）
+ */
+export const completeWorkout = async (uid: string): Promise<{ dice: number[] | null; session: number }> => {
   const key = dateKey()
   return runTransaction(db, async (tx) => {
     const mainSnap = await tx.get(mainRef)
     const daySnap = await tx.get(dayRef(key))
     const main = toMain(mainSnap.data() as Partial<MainDoc> | undefined)
     const day = daySnap.exists() ? toDay(daySnap.data() as Partial<DayDoc>) : EMPTY_DAY
+    const session = sessionsOf(day, uid) + 1
     const grant = diceForCompletion(day, uid)
-    if (!grant) return null
+    if (!grant) {
+      tx.set(dayRef(key), { sessions: { [uid]: session } }, { merge: true })
+      return { dice: null, session }
+    }
     const dice = rollDice(grant.count)
     tx.set(
       dayRef(key),
-      { done: { ...day.done, [uid]: Date.now() }, order: [...day.order, uid], challenges: day.challenges },
+      { done: { [uid]: Date.now() }, order: [...day.order, uid], sessions: { [uid]: session } },
       { merge: true },
     )
     tx.set(mainRef, { pending: { [uid]: mergePending(main.pending[uid], dice, grant.reason) } }, { merge: true })
-    return dice
+    return { dice, session }
   })
 }
 

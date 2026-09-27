@@ -8,6 +8,8 @@ import { Back } from './parts'
 type Props = {
   uid: string
   todayKey: string
+  /** 今日の何本目か */
+  round: number
   menu: Exercise[]
   levels: Record<string, Level>
   onBack: () => void
@@ -16,14 +18,16 @@ type Props = {
 
 const WD = ['日', '月', '火', '水', '木', '金', '土']
 
-export const MenuScreen = ({ uid, todayKey, menu, levels, onBack, onGo }: Props) => {
+export const MenuScreen = ({ uid, todayKey, round, menu, levels, onBack, onGo }: Props) => {
   const today = weekday(todayKey)
   const total = READY_SEC + menu.length * WORK_SEC + (menu.length - 1) * REST_SEC
   return (
     <div className="screen sea">
       <Back onClick={onBack} />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-        <span className="chip">{label(todayKey)} 本日の運行</span>
+        <span className="chip">
+          {label(todayKey)} 本日の運行{round > 1 && `（${round}本目・サイコロなし）`}
+        </span>
         <h1 className="title3d" style={{ fontSize: 38 }}>
           {themeOf(todayKey).name}
         </h1>

@@ -12,7 +12,7 @@ export const ROLE_NAME: Record<Role, string> = {
 
 /** 1種目の運動と休憩（秒） */
 export const WORK_SEC = 40
-export const REST_SEC = 20
+export const REST_SEC = 10
 export const READY_SEC = 5
 export const ITEMS_PER_DAY = 5
 

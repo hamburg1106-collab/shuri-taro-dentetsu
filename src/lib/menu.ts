@@ -10,8 +10,8 @@ const pool = (key: string): Exercise[] => {
   return EXERCISES.filter((e) => e.tags.some((t) => tags.includes(t)))
 }
 
-const pick = (key: string, avoid: Set<string>): Exercise[] => {
-  const r = rng(`menu:${key}`)
+const pick = (key: string, avoid: Set<string>, round = 1): Exercise[] => {
+  const r = rng(round === 1 ? `menu:${key}` : `menu:${key}#${round}`)
   const all = pool(key)
   // 前日と同じ種目は、候補が足りる限り外す
   const fresh = all.filter((e) => !avoid.has(e.id))
@@ -28,9 +28,12 @@ const pick = (key: string, avoid: Set<string>): Exercise[] => {
  * その日のメニュー。日付だけで決まるので、夫婦で同じ日に同じメニューになる。
  * 前日のメニューは「前々日を避けずに作った前日」で近似する（連鎖させると計算が重くなるため）。
  */
-export const menuOf = (key: string): Exercise[] => {
+export const menuOf = (key: string, round = 1): Exercise[] => {
   const yesterday = pick(addDays(key, -1), new Set())
-  return pick(key, new Set(yesterday.map((e) => e.id)))
+  const first = pick(key, new Set(yesterday.map((e) => e.id)))
+  if (round === 1) return first
+  // 2本目からは、同じ日の1本目と違う種目をなるべく選ぶ（曜日テーマはそのまま）
+  return pick(key, new Set(first.map((e) => e.id)), round)
 }
 
 export const themeOf = (key: string) => DAY_THEMES[weekday(key)]
