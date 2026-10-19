@@ -1,21 +1,7 @@
-rules_version = '2';
-
-// Firebaseコンソール（ouchi-no-kondate → Firestore → ルール）に「追加」するもの。
+// Firestoreのルールは、このリポジトリでは管理しない。
 //
-// このプロジェクトは他のアプリと共用している。コンソールのルールを丸ごと置き換えると
-// 他のアプリが止まるので、下の「しゅり太郎電鉄」の match ブロックだけを、
-// 既存の `match /databases/{database}/documents { ... }` の中に書き足すこと。
+// Firebaseプロジェクト ouchi-no-kondate は複数のアプリで共用していて、
+// コンソールに効くルールは1つだけ。正本は「わが家のお財布」リポジトリの firestore.rules。
+// 変更するときはそちらを直して、丸ごとコンソールに貼ること。
 //
-// 'UID_TOSHI' / 'UID_TSUMA' は本物のuidに置き換える。
-// 本物を入れた貼り付け用は firestore.rules.local.txt（Git管理外）にある。
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // --- しゅり太郎電鉄（夫婦のすごろく） ---
-    // 夫婦2人だけが読み書きできる。体重もここに入る
-    match /shuritaro/{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.uid in ['UID_TOSHI', 'UID_TSUMA'];
-    }
-  }
-}
+// 「しゅり太郎電鉄」が使うのは shuritaro/... で、夫婦2人のuidだけ読み書きできる。
